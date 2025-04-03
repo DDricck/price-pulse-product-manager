@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Package, LineChart, BarChart3 } from "@/components/ui-icons";
 
 const Index = () => {
   const navigate = useNavigate();
