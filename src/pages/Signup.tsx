@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -50,23 +51,27 @@ const Signup = () => {
     setIsLoading(true);
     
     try {
-      // Placeholder for Supabase authentication
-      // Will be implemented when Supabase is connected
-      console.log("Signup with:", email, password);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
       
-      // For now, simulate successful signup
-      setTimeout(() => {
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
         toast({
           title: "Account created!",
           description: "Your account has been created successfully.",
         });
         navigate("/login");
-      }, 1000);
-    } catch (error) {
+      }
+    } catch (error: any) {
       console.error("Signup error:", error);
       toast({
         title: "Signup failed",
-        description: "An error occurred during signup. Please try again.",
+        description: error.message || "An error occurred during signup. Please try again.",
         variant: "destructive",
       });
     } finally {
