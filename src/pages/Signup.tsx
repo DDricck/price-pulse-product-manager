@@ -13,6 +13,8 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
@@ -21,10 +23,10 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !firstName) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -54,6 +56,12 @@ const Signup = () => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName
+          }
+        }
       });
       
       if (error) {
@@ -96,8 +104,31 @@ const Signup = () => {
           </CardHeader>
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -108,7 +139,7 @@ const Signup = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Password *</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -129,7 +160,7 @@ const Signup = () => {
                 <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
                 <Input
                   id="confirmPassword"
                   type={showPassword ? "text" : "password"}

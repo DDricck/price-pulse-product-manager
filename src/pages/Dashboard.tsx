@@ -95,6 +95,22 @@ const Dashboard = () => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
+  // Get user's display name
+  const getUserDisplayName = () => {
+    if (!userData) return "User";
+    
+    const firstName = userData.user_metadata?.first_name || '';
+    const lastName = userData.user_metadata?.last_name || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else {
+      return userData.email?.split('@')[0] || "User";
+    }
+  };
+
   // Count statistics
   const productCount = products.length;
   const categoryCount = [...new Set(products.map(p => p.unit))].filter(Boolean).length;
@@ -126,7 +142,7 @@ const Dashboard = () => {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome, {userData?.email?.split('@')[0] || 'User'}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome, {getUserDisplayName()}</h1>
             <p className="text-gray-600">Here's what's happening with your products today</p>
           </div>
           <Button 

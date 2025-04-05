@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   BarChart3,
@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -33,17 +34,87 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
 
-  const handleLogout = () => {
-    // Placeholder for Supabase logout
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
-    navigate("/login");
+  useEffect(() => {
+    // Get the current user
+    const getUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+
+    getUser();
+
+    // Setup listener for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+        if (!session) {
+          navigate('/login');
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      navigate("/login");
+    } catch (error: any) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user) return "??";
+    
+    const firstName = user.user_metadata?.first_name || '';
+    const lastName = user.user_metadata?.last_name || '';
+    
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    } else if (firstName) {
+      return firstName[0].toUpperCase();
+    } else if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    
+    return "U";
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return "User";
+    
+    const firstName = user.user_metadata?.first_name || '';
+    const lastName = user.user_metadata?.last_name || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else {
+      return user.email?.split('@')[0] || "User";
+    }
   };
 
   const navigationItems = [
@@ -78,6 +149,10 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       icon: Settings,
     },
   ];
+
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center">Checking authentication...</div>;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -140,12 +215,12 @@ const MainLayout = ({ children }: MainLayoutProps) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="w-full justify-start">
                   <Avatar className="w-8 h-8 mr-2">
-                    <AvatarFallback>JD</AvatarFallback>
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">John Doe</span>
+                    <span className="text-sm font-medium">{getUserDisplayName()}</span>
                     <span className="text-xs text-muted-foreground">
-                      john@example.com
+                      {user.email}
                     </span>
                   </div>
                 </Button>
@@ -172,7 +247,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:text-red-700">
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
@@ -203,6 +278,15 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                 day: "numeric",
               })}
             </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="hidden md:flex items-center text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
           </div>
         </header>
 
