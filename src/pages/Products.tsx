@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/table";
 import { Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PriceHistoryDialog from "@/components/PriceHistoryDialog";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   prodcode: string;
@@ -23,6 +25,8 @@ interface Product {
 const Products = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -51,6 +55,23 @@ const Products = () => {
 
     fetchProducts();
   }, [toast]);
+
+  const handleRowClick = (product: Product) => {
+    setSelectedProduct(product);
+    setShowPriceHistory(true);
+  };
+
+  const handleCloseDialog = () => {
+    setShowPriceHistory(false);
+  };
+
+  const handlePriceHistoryUpdated = () => {
+    // This will be called when price history is updated
+    toast({
+      title: "Price history updated",
+      description: "The price history has been updated successfully",
+    });
+  };
 
   return (
     <MainLayout>
@@ -82,21 +103,43 @@ const Products = () => {
                       <TableHead>Product Code</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Unit</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {products.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={3} className="h-24 text-center">
+                        <TableCell colSpan={4} className="h-24 text-center">
                           No products found.
                         </TableCell>
                       </TableRow>
                     ) : (
                       products.map((product) => (
-                        <TableRow key={product.prodcode}>
-                          <TableCell className="font-medium">{product.prodcode}</TableCell>
-                          <TableCell>{product.description || "-"}</TableCell>
-                          <TableCell>{product.unit || "-"}</TableCell>
+                        <TableRow 
+                          key={product.prodcode} 
+                          className="cursor-pointer hover:bg-muted/50"
+                        >
+                          <TableCell 
+                            className="font-medium"
+                            onClick={() => handleRowClick(product)}
+                          >
+                            {product.prodcode}
+                          </TableCell>
+                          <TableCell onClick={() => handleRowClick(product)}>
+                            {product.description || "-"}
+                          </TableCell>
+                          <TableCell onClick={() => handleRowClick(product)}>
+                            {product.unit || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleRowClick(product)}
+                            >
+                              View Price History
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -106,6 +149,15 @@ const Products = () => {
             )}
           </CardContent>
         </Card>
+        
+        {selectedProduct && (
+          <PriceHistoryDialog
+            open={showPriceHistory}
+            onClose={handleCloseDialog}
+            product={selectedProduct}
+            onPriceHistoryUpdated={handlePriceHistoryUpdated}
+          />
+        )}
       </div>
     </MainLayout>
   );
