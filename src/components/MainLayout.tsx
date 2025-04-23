@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -127,26 +126,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       name: "Products",
       href: "/products",
       icon: Package,
-    },
-    {
-      name: "Price History",
-      href: "/price-history",
-      icon: LineChart,
-    },
-    {
-      name: "Categories",
-      href: "/categories",
-      icon: Tag,
-    },
-    {
-      name: "Activity Log",
-      href: "/activity",
-      icon: History,
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: Settings,
     },
   ];
 
