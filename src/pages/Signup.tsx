@@ -53,6 +53,7 @@ const Signup = () => {
     setIsLoading(true);
     
     try {
+      // Create user account
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -68,7 +69,30 @@ const Signup = () => {
         throw error;
       }
       
+      // Create default user role and permissions if signup was successful
       if (data.user) {
+        // Add user role (default to 'user')
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: data.user.id, role: 'user' });
+        
+        if (roleError) console.error("Error setting user role:", roleError);
+        
+        // Add default permissions (all set to false)
+        const { error: permError } = await supabase
+          .from('user_permissions')
+          .insert({ 
+            user_id: data.user.id,
+            edit_product: false,
+            delete_product: false,
+            add_product: false,
+            edit_price_history: false,
+            delete_price_history: false,
+            add_price_history: false
+          });
+        
+        if (permError) console.error("Error setting user permissions:", permError);
+        
         toast({
           title: "Account created!",
           description: "Your account has been created successfully.",

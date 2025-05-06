@@ -155,7 +155,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   // Only show Manage Users for admins
   if (userRole === "admin") {
     navigationItems.push({
-      name: "Manage Users",
+      name: "User Management",
       href: "/users",
       icon: Users,
     });
