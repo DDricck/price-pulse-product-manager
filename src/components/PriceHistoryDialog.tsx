@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -62,11 +61,22 @@ interface PriceHistory {
   unitprice: number | null;
 }
 
+interface UserPermissions {
+  add_product: boolean;
+  edit_product: boolean;
+  delete_product: boolean;
+  add_price_history: boolean;
+  edit_price_history: boolean;
+  delete_price_history: boolean;
+}
+
 interface PriceHistoryDialogProps {
   open: boolean;
   onClose: () => void;
   product: Product;
   onPriceHistoryUpdated: () => void;
+  isAdmin?: boolean;
+  userPermissions?: UserPermissions;
 }
 
 const priceFormSchema = z.object({
@@ -87,6 +97,15 @@ const PriceHistoryDialog = ({
   onClose,
   product,
   onPriceHistoryUpdated,
+  isAdmin = false,
+  userPermissions = {
+    add_product: false,
+    edit_product: false,
+    delete_product: false,
+    add_price_history: false,
+    edit_price_history: false,
+    delete_price_history: false,
+  }
 }: PriceHistoryDialogProps) => {
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -292,9 +311,11 @@ const PriceHistoryDialog = ({
           <div className="rounded-md border">
             <div className="flex justify-between items-center p-4">
               <h3 className="font-semibold">Price History Records</h3>
-              <Button onClick={openAddSheet} size="sm">
-                <Plus className="h-4 w-4 mr-1" /> Add New Price
-              </Button>
+              {(isAdmin || userPermissions.add_price_history) && (
+                <Button onClick={openAddSheet} size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Add New Price
+                </Button>
+              )}
             </div>
             
             {loading ? (
@@ -328,22 +349,26 @@ const PriceHistoryDialog = ({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditSheet(price)}
-                            >
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openDeleteDialog(price)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
+                            {(isAdmin || userPermissions.edit_price_history) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditSheet(price)}
+                              >
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Edit</span>
+                              </Button>
+                            )}
+                            {(isAdmin || userPermissions.delete_price_history) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog(price)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
