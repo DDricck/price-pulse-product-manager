@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -12,9 +11,7 @@ import {
   User,
   PlusCircle,
   Tag,
-  History,
-  Users,
-  Shield
+  History
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +34,6 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string>("user");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -47,34 +43,15 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
-      
-      if (session?.user) {
-        // Check if user is an admin
-        const { data, error } = await supabase.rpc("is_admin");
-        if (!error && data) {
-          setUserRole("admin");
-        } else {
-          setUserRole("user");
-        }
-      }
     };
 
     getUser();
 
     // Setup listener for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setUser(session?.user || null);
-        
-        if (session?.user) {
-          // Check if user is an admin
-          const { data, error } = await supabase.rpc("is_admin");
-          if (!error && data) {
-            setUserRole("admin");
-          } else {
-            setUserRole("user");
-          }
-        } else {
+        if (!session) {
           navigate('/login');
         }
       }
@@ -149,17 +126,8 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       name: "Products",
       href: "/products",
       icon: Package,
-    }
+    },
   ];
-
-  // Only show Manage Users for admins
-  if (userRole === "admin") {
-    navigationItems.push({
-      name: "User Management",
-      href: "/users",
-      icon: Users,
-    });
-  }
 
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center">Checking authentication...</div>;
@@ -257,14 +225,6 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                     Add New Product
                   </Link>
                 </DropdownMenuItem>
-                {userRole === "admin" && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/users" className="flex w-full cursor-pointer">
-                      <Shield className="mr-2 h-4 w-4" />
-                      User Management
-                    </Link>
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:text-red-700">
                   <LogOut className="mr-2 h-4 w-4" />
