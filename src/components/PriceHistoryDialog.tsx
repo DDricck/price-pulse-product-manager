@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -290,51 +291,44 @@ const PriceHistoryDialog = ({
       <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Price History</DialogTitle>
+            <DialogTitle className="text-center text-xl font-bold">Price History Dialog Box</DialogTitle>
           </DialogHeader>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <div>
-              <Label className="font-medium">Product Code</Label>
+              <Label className="font-bold">Product Code</Label>
               <p>{product.prodcode}</p>
             </div>
             <div>
-              <Label className="font-medium">Description</Label>
+              <Label className="font-bold">Description</Label>
               <p>{product.description || "-"}</p>
             </div>
             <div>
-              <Label className="font-medium">Unit</Label>
+              <Label className="font-bold">Unit</Label>
               <p>{product.unit || "-"}</p>
             </div>
           </div>
 
-          <div className="rounded-md border">
-            <div className="flex justify-between items-center p-4">
-              <h3 className="font-semibold">Price History Records</h3>
-              {(isAdmin || userPermissions.add_price_history) && (
-                <Button onClick={openAddSheet} size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Add New Price
-                </Button>
-              )}
-            </div>
-            
-            {loading ? (
-              <div className="h-40 flex items-center justify-center">
-                <p className="text-muted-foreground">Loading price history...</p>
-              </div>
-            ) : (
+          <div>
+            <div className="mb-2">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Effective Date</TableHead>
-                    <TableHead>Unit Price</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Effectivity Date</TableHead>
+                    <TableHead className="font-bold">Unit price</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {priceHistory.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center">
+                      <TableCell colSpan={3} className="text-center py-4">
+                        Loading price history...
+                      </TableCell>
+                    </TableRow>
+                  ) : priceHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-4">
                         No price history found.
                       </TableCell>
                     </TableRow>
@@ -348,42 +342,48 @@ const PriceHistoryDialog = ({
                           ${price.unitprice !== null ? price.unitprice.toFixed(2) : "-"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {(isAdmin || userPermissions.edit_price_history) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditSheet(price)}
-                              >
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">Edit</span>
-                              </Button>
-                            )}
-                            {(isAdmin || userPermissions.delete_price_history) && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openDeleteDialog(price)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Delete</span>
-                              </Button>
-                            )}
-                          </div>
+                          {(isAdmin || userPermissions.edit_price_history) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditSheet(price)}
+                              className="mr-2"
+                            >
+                              Edit Price
+                            </Button>
+                          )}
+                          {(isAdmin || userPermissions.delete_price_history) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openDeleteDialog(price)}
+                              className="text-red-600"
+                            >
+                              Delete Price
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
-            )}
+            </div>
+            
+            <div className="flex justify-between mt-6">
+              {(isAdmin || userPermissions.add_price_history) && (
+                <Button 
+                  onClick={openAddSheet}
+                  className="mr-2"
+                >
+                  Add New Price
+                </Button>
+              )}
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
