@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -11,7 +12,8 @@ import {
   User,
   PlusCircle,
   Tag,
-  History
+  History,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +36,7 @@ interface MainLayoutProps {
 const MainLayout = ({ children }: MainLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -43,15 +46,42 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     const getUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);
+
+      if (session?.user) {
+        // Check if user is admin
+        try {
+          const { data, error } = await supabase.rpc('is_admin');
+          if (!error && data) {
+            setIsAdmin(true);
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+        }
+      }
     };
 
     getUser();
 
     // Setup listener for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setUser(session?.user || null);
-        if (!session) {
+        
+        if (session?.user) {
+          // Check if user is admin
+          try {
+            const { data, error } = await supabase.rpc('is_admin');
+            if (!error && data) {
+              setIsAdmin(true);
+            } else {
+              setIsAdmin(false);
+            }
+          } catch (error) {
+            console.error("Error checking admin status:", error);
+            setIsAdmin(false);
+          }
+        } else {
+          setIsAdmin(false);
           navigate('/login');
         }
       }
@@ -127,7 +157,21 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       href: "/products",
       icon: Package,
     },
+    {
+      name: "Price History",
+      href: "/price-history",
+      icon: LineChart,
+    },
   ];
+
+  // Add Manage Users menu item for admins only
+  if (isAdmin) {
+    navigationItems.push({
+      name: "Manage Users",
+      href: "/manage-users",
+      icon: Users,
+    });
+  }
 
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center">Checking authentication...</div>;

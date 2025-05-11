@@ -169,16 +169,22 @@ export type Database = {
         Row: {
           effdate: string
           prodcode: string
+          stamp: string | null
+          status: string
           unitprice: number | null
         }
         Insert: {
           effdate: string
           prodcode: string
+          stamp?: string | null
+          status?: string
           unitprice?: number | null
         }
         Update: {
           effdate?: string
           prodcode?: string
+          stamp?: string | null
+          status?: string
           unitprice?: number | null
         }
         Relationships: [
@@ -195,16 +201,22 @@ export type Database = {
         Row: {
           description: string | null
           prodcode: string
+          stamp: string | null
+          status: string
           unit: string | null
         }
         Insert: {
           description?: string | null
           prodcode: string
+          stamp?: string | null
+          status?: string
           unit?: string | null
         }
         Update: {
           description?: string | null
           prodcode?: string
+          stamp?: string | null
+          status?: string
           unit?: string | null
         }
         Relationships: []
@@ -278,12 +290,74 @@ export type Database = {
           },
         ]
       }
+      user_permissions: {
+        Row: {
+          add_price_history: boolean
+          add_product: boolean
+          delete_price_history: boolean
+          delete_product: boolean
+          edit_price_history: boolean
+          edit_product: boolean
+          id: string
+          user_id: string
+        }
+        Insert: {
+          add_price_history?: boolean
+          add_product?: boolean
+          delete_price_history?: boolean
+          delete_product?: boolean
+          edit_price_history?: boolean
+          edit_product?: boolean
+          id?: string
+          user_id: string
+        }
+        Update: {
+          add_price_history?: boolean
+          add_product?: boolean
+          delete_price_history?: boolean
+          delete_product?: boolean
+          edit_price_history?: boolean
+          edit_product?: boolean
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      user_has_permission: {
+        Args: { permission: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
