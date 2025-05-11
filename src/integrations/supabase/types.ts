@@ -294,49 +294,61 @@ export type Database = {
         Row: {
           add_price_history: boolean
           add_product: boolean
+          created_at: string | null
           delete_price_history: boolean
           delete_product: boolean
           edit_price_history: boolean
           edit_product: boolean
           id: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           add_price_history?: boolean
           add_product?: boolean
+          created_at?: string | null
           delete_price_history?: boolean
           delete_product?: boolean
           edit_price_history?: boolean
           edit_product?: boolean
           id?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           add_price_history?: boolean
           add_product?: boolean
+          created_at?: string | null
           delete_price_history?: boolean
           delete_product?: boolean
           edit_price_history?: boolean
           edit_product?: boolean
           id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
       }
       user_roles: {
         Row: {
+          created_at: string | null
           id: string
           role: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
           role?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          created_at?: string | null
           id?: string
           role?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
