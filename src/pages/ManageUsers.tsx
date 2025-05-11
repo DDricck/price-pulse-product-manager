@@ -86,8 +86,7 @@ const ManageUsers = () => {
         
         if (!roleData) {
           // Redirect non-admin users
-          toast({
-            title: "Access Denied",
+          toast("Access Denied", {
             description: "You don't have permission to access this page.",
             duration: 5000,
           });
@@ -153,7 +152,7 @@ const ManageUsers = () => {
             id: user.id,
             email: user.email || "",
             role: userRole?.role || "user",
-            status: user.banned ? "deleted" : "active",
+            status: user.ban_duration ? "deleted" : "active",
             permissions: userPermission
           };
         });
@@ -161,10 +160,8 @@ const ManageUsers = () => {
         setUsers(mappedUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
-        toast({
-          title: "Error",
+        toast("Error", {
           description: "Failed to fetch users data. Please try again.",
-          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -224,9 +221,8 @@ const ManageUsers = () => {
         if (error) throw error;
       }
       
-      toast({
-        title: "Success",
-        description: `Permissions updated for ${selectedUser.email}`,
+      toast("Success", {
+        description: `Permissions updated for ${selectedUser.email}`
       });
       
       // Refresh the users list
@@ -245,10 +241,8 @@ const ManageUsers = () => {
       
     } catch (error) {
       console.error("Error saving permissions:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update permissions. Please try again.",
-        variant: "destructive",
+      toast("Error", {
+        description: "Failed to update permissions. Please try again."
       });
     }
   };
@@ -258,9 +252,13 @@ const ManageUsers = () => {
       const newStatus = currentStatus === "active" ? "deleted" : "active";
       
       // Update user's banned status in Auth
+      const adminAttributes: Record<string, any> = {
+        ban_duration: newStatus === "deleted" ? "87600h" : null, // 10 years if deleted
+      };
+      
       const { error } = await supabase.auth.admin.updateUserById(
         userId,
-        { banned: newStatus === "deleted" }
+        adminAttributes
       );
       
       if (error) throw error;
@@ -278,17 +276,14 @@ const ManageUsers = () => {
       
       setUsers(updatedUsers);
       
-      toast({
-        title: "Success",
-        description: `User ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+      toast("Success", {
+        description: `User ${newStatus === "active" ? "activated" : "deactivated"} successfully`
       });
       
     } catch (error) {
       console.error("Error updating user status:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update user status. Please try again.",
-        variant: "destructive",
+      toast("Error", {
+        description: "Failed to update user status. Please try again."
       });
     }
   };
@@ -336,17 +331,14 @@ const ManageUsers = () => {
       
       setUsers(updatedUsers);
       
-      toast({
-        title: "Success",
-        description: `User role updated to ${newRole}`,
+      toast("Success", {
+        description: `User role updated to ${newRole}`
       });
       
     } catch (error) {
       console.error("Error changing role:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update user role. Please try again.",
-        variant: "destructive",
+      toast("Error", {
+        description: "Failed to update user role. Please try again."
       });
     }
   };
