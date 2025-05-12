@@ -203,6 +203,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
               </div>
               <h1 className="ml-2 text-xl font-bold text-blue-600">PricePulse</h1>
             </Link>
+            {isAdmin && (
+              <span className="ml-2 px-2 py-1 text-xs font-medium rounded bg-red-600 text-white">
+                Admin
+              </span>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -246,6 +251,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                       {user.email}
                     </span>
                   </div>
+                  {isAdmin && (
+                    <span className="ml-2 px-2 py-1 text-xs font-medium rounded bg-red-600 text-white">
+                      Admin
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -269,6 +279,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
                     Add New Product
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/manage-users" className="flex w-full cursor-pointer font-semibold text-red-600">
+                      <Users className="mr-2 h-4 w-4" />
+                      Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 hover:text-red-700">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -293,6 +311,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="ml-auto flex items-center space-x-4">
+            {isAdmin && (
+              <span className="px-2 py-1 text-xs font-medium rounded bg-red-600 text-white">
+                Admin Account
+              </span>
+            )}
             <span className="text-sm font-medium text-muted-foreground">
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
