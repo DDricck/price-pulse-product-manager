@@ -1,502 +1,541 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import MainLayout from "@/components/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import MainLayout from "@/components/MainLayout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Shield, MoreHorizontal, UserPlus, Pencil, Trash2, Users } from "lucide-react";
+import { formatDistance } from "date-fns";
 
-interface User {
+type User = {
   id: string;
   email: string;
-  role: string;
-  status: string;
-  permissions: UserPermissions;
-}
+  created_at: string;
+  last_sign_in_at: string | null;
+  user_metadata: {
+    first_name?: string;
+    last_name?: string;
+  };
+};
 
-interface UserPermissions {
+type UserRole = {
   id: string;
   user_id: string;
-  edit_product: boolean;
-  delete_product: boolean;
-  add_product: boolean;
-  edit_price_history: boolean;
-  delete_price_history: boolean;
-  add_price_history: boolean;
-}
+  user_admin: string; // Changed from 'role' to 'user_admin'
+  created_at: string;
+  updated_at: string;
+};
 
 const ManageUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
-  const [userPermissions, setUserPermissions] = useState<UserPermissions>({
-    id: "",
-    user_id: "",
-    edit_product: false,
-    delete_product: false,
-    add_product: false,
-    edit_price_history: false,
-    delete_price_history: false,
-    add_price_history: false,
-  });
-  
-  const navigate = useNavigate();
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
+  const [inviteRole, setInviteRole] = useState("user");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState("user");
+  const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
+  const { toast } = useToast();
 
-  // Check if current user is admin
   useEffect(() => {
-    const checkUserRole = async () => {
+    const fetchUsersAndRoles = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          navigate("/login");
-          return;
-        }
+        // Check if current user is admin
+        const { data: isAdminData, error: isAdminError } = await supabase.rpc('is_admin');
         
-        const { data: roleData, error: roleError } = await supabase.rpc("is_admin");
-        
-        if (roleError) {
-          console.error("Error checking admin status:", roleError);
-          setIsAdmin(false);
-          navigate("/dashboard");
-          return;
-        }
-        
-        setIsAdmin(roleData);
-        
-        if (!roleData) {
-          // Redirect non-admin users
-          toast("Access Denied", {
+        if (isAdminError || !isAdminData) {
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
             description: "You don't have permission to access this page.",
-            duration: 5000,
           });
-          navigate("/dashboard");
+          // Redirect to dashboard or show access denied
+          return;
         }
-      } catch (error) {
-        console.error("Error:", error);
-        navigate("/dashboard");
-      }
-    };
-
-    checkUserRole();
-  }, [navigate]);
-
-  // Fetch users data
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!isAdmin) return;
-
-      try {
-        setLoading(true);
         
-        // Get all users from Supabase Auth
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        // Fetch users
+        const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
         
-        if (authError) {
-          throw authError;
-        }
-
-        // Get user roles
+        if (usersError) throw usersError;
+        
+        // Fetch user roles
         const { data: rolesData, error: rolesError } = await supabase
-          .from("user_roles")
-          .select("*");
+          .from('user_roles')
+          .select('*');
           
-        if (rolesError) {
-          throw rolesError;
-        }
-
-        // Get user permissions
-        const { data: permissionsData, error: permissionsError } = await supabase
-          .from("user_permissions")
-          .select("*");
-          
-        if (permissionsError) {
-          throw permissionsError;
-        }
-
-        // Map and combine the data
-        const mappedUsers = authUsers.users.map(user => {
-          const userRole = rolesData.find(r => r.user_id === user.id);
-          const userPermission = permissionsData.find(p => p.user_id === user.id) || {
-            id: "",
-            user_id: user.id,
-            edit_product: false,
-            delete_product: false,
-            add_product: false,
-            edit_price_history: false,
-            delete_price_history: false,
-            add_price_history: false,
-          };
-          
-          return {
-            id: user.id,
-            email: user.email || "",
-            role: userRole?.role || "user",
-            status: user.ban_duration ? "deleted" : "active",
-            permissions: userPermission
-          };
-        });
-
-        setUsers(mappedUsers);
+        if (rolesError) throw rolesError;
+        
+        setUsers(usersData?.users || []);
+        setUserRoles(rolesData || []);
       } catch (error) {
         console.error("Error fetching users:", error);
-        toast("Error", {
-          description: "Failed to fetch users data. Please try again.",
+        toast({
+          variant: "destructive",
+          title: "Failed to load users",
+          description: "Please try again later",
         });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUsers();
-  }, [isAdmin]);
+    fetchUsersAndRoles();
+  }, [toast]);
 
-  const handleOpenPermissions = (user: User) => {
-    setSelectedUser(user);
-    setUserPermissions(user.permissions);
-    setPermissionsDialogOpen(true);
+  const getUserRole = (userId: string) => {
+    const userRole = userRoles.find((role) => role.user_id === userId);
+    return userRole ? userRole.user_admin : 'user'; // Changed from role.role to role.user_admin
   };
 
-  const handlePermissionChange = (permission: keyof UserPermissions, value: boolean) => {
-    setUserPermissions({
-      ...userPermissions,
-      [permission]: value,
-    });
-  };
-
-  const handleSavePermissions = async () => {
-    if (!selectedUser) return;
-    
+  const handleInviteUser = async () => {
     try {
-      // Check if permissions record already exists
-      if (userPermissions.id) {
-        // Update existing permissions
-        const { error } = await supabase
-          .from("user_permissions")
-          .update({
-            edit_product: userPermissions.edit_product,
-            delete_product: userPermissions.delete_product,
-            add_product: userPermissions.add_product,
-            edit_price_history: userPermissions.edit_price_history,
-            delete_price_history: userPermissions.delete_price_history,
-            add_price_history: userPermissions.add_price_history,
-          })
-          .eq("id", userPermissions.id);
-          
-        if (error) throw error;
-      } else {
-        // Create new permissions record
-        const { error } = await supabase
-          .from("user_permissions")
+      setLoading(true);
+      
+      // Create user with Supabase Auth
+      const { data, error } = await supabase.auth.admin.inviteUserByEmail(inviteEmail, {
+        data: {
+          first_name: inviteFirstName,
+          last_name: inviteLastName,
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data && inviteRole === 'admin') {
+        // If admin role, add to user_roles table
+        const { error: roleError } = await supabase
+          .from('user_roles')
           .insert({
-            user_id: selectedUser.id,
-            edit_product: userPermissions.edit_product,
-            delete_product: userPermissions.delete_product,
-            add_product: userPermissions.add_product,
-            edit_price_history: userPermissions.edit_price_history,
-            delete_price_history: userPermissions.delete_price_history,
-            add_price_history: userPermissions.add_price_history,
+            user_id: data.user.id,
+            user_admin: 'admin' // Changed from role: 'admin' to user_admin: 'admin'
           });
           
-        if (error) throw error;
+        if (roleError) throw roleError;
       }
       
-      toast("Success", {
-        description: `Permissions updated for ${selectedUser.email}`
+      toast({
+        title: "User invited",
+        description: `Invitation email sent to ${inviteEmail}`,
       });
       
-      // Refresh the users list
-      const updatedUsers = users.map(user => {
-        if (user.id === selectedUser.id) {
-          return {
-            ...user,
-            permissions: userPermissions,
-          };
-        }
-        return user;
-      });
+      setInviteDialogOpen(false);
       
-      setUsers(updatedUsers);
-      setPermissionsDialogOpen(false);
+      // Refresh users list
+      const { data: updatedUsers } = await supabase.auth.admin.listUsers();
+      if (updatedUsers) setUsers(updatedUsers.users);
       
-    } catch (error) {
-      console.error("Error saving permissions:", error);
-      toast("Error", {
-        description: "Failed to update permissions. Please try again."
+      // Refresh roles
+      const { data: updatedRoles } = await supabase
+        .from('user_roles')
+        .select('*');
+      if (updatedRoles) setUserRoles(updatedRoles);
+      
+    } catch (error: any) {
+      console.error("Error inviting user:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to invite user",
+        description: error.message || "Please try again later",
       });
+    } finally {
+      setLoading(false);
+      resetInviteForm();
     }
   };
 
-  const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
+  const handleUpdateUserRole = async () => {
+    if (!currentUser) return;
+    
     try {
-      const newStatus = currentStatus === "active" ? "deleted" : "active";
+      setLoading(true);
       
-      // Update user's banned status in Auth
-      const adminAttributes: Record<string, any> = {
-        ban_duration: newStatus === "deleted" ? "87600h" : null, // 10 years if deleted
-      };
+      const userId = currentUser.id;
+      const currentRoleRecord = userRoles.find((role) => role.user_id === userId);
       
-      const { error } = await supabase.auth.admin.updateUserById(
-        userId,
-        adminAttributes
+      if (currentUserRole === 'admin') {
+        // User should be admin
+        if (currentRoleRecord) {
+          // Update existing record to admin
+          await supabase
+            .from('user_roles')
+            .update({ user_admin: 'admin' }) // Changed from role: 'admin' to user_admin: 'admin'
+            .eq('user_id', userId);
+        } else {
+          // Insert new admin record
+          await supabase
+            .from('user_roles')
+            .insert({
+              user_id: userId,
+              user_admin: 'admin' // Changed from role: 'admin' to user_admin: 'admin'
+            });
+        }
+      } else {
+        // User should be regular user, remove from user_roles if they exist there
+        if (currentRoleRecord) {
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('user_id', userId);
+        }
+      }
+      
+      toast({
+        title: "User updated",
+        description: `User role updated successfully`,
+      });
+      
+      setEditUserDialogOpen(false);
+      
+      // Refresh roles
+      const { data: updatedRoles } = await supabase
+        .from('user_roles')
+        .select('*');
+      if (updatedRoles) setUserRoles(updatedRoles);
+      
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to update user",
+        description: error.message || "Please try again later",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setLoading(true);
+      
+      // Delete user
+      const { error } = await supabase.auth.admin.deleteUser(
+        currentUser.id
       );
       
       if (error) throw error;
       
-      // Update the local state
-      const updatedUsers = users.map(user => {
-        if (user.id === userId) {
-          return {
-            ...user,
-            status: newStatus,
-          };
-        }
-        return user;
+      toast({
+        title: "User deleted",
+        description: `User account has been removed`,
       });
       
-      setUsers(updatedUsers);
+      setDeleteConfirmDialogOpen(false);
       
-      toast("Success", {
-        description: `User ${newStatus === "active" ? "activated" : "deactivated"} successfully`
-      });
+      // Refresh users list
+      const { data: updatedUsers } = await supabase.auth.admin.listUsers();
+      if (updatedUsers) setUsers(updatedUsers.users);
       
-    } catch (error) {
-      console.error("Error updating user status:", error);
-      toast("Error", {
-        description: "Failed to update user status. Please try again."
+      // User roles should be automatically cascaded due to foreign key constraint
+      const { data: updatedRoles } = await supabase
+        .from('user_roles')
+        .select('*');
+      if (updatedRoles) setUserRoles(updatedRoles);
+      
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to delete user",
+        description: error.message || "Please try again later",
       });
+    } finally {
+      setLoading(false);
+      setCurrentUser(null);
     }
   };
 
-  const handleChangeRole = async (userId: string, newRole: string) => {
-    try {
-      // Check if role record exists
-      const { data: existingRole, error: fetchError } = await supabase
-        .from("user_roles")
-        .select("*")
-        .eq("user_id", userId)
-        .single();
-        
-      if (fetchError && fetchError.code !== "PGRST116") {
-        throw fetchError;
-      }
-      
-      if (existingRole) {
-        // Update existing role
-        const { error } = await supabase
-          .from("user_roles")
-          .update({ role: newRole })
-          .eq("id", existingRole.id);
-          
-        if (error) throw error;
-      } else {
-        // Create new role record
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: newRole });
-          
-        if (error) throw error;
-      }
-      
-      // Update local state
-      const updatedUsers = users.map(user => {
-        if (user.id === userId) {
-          return {
-            ...user,
-            role: newRole,
-          };
-        }
-        return user;
-      });
-      
-      setUsers(updatedUsers);
-      
-      toast("Success", {
-        description: `User role updated to ${newRole}`
-      });
-      
-    } catch (error) {
-      console.error("Error changing role:", error);
-      toast("Error", {
-        description: "Failed to update user role. Please try again."
-      });
-    }
+  const openEditUserDialog = (user: User) => {
+    setCurrentUser(user);
+    setCurrentUserRole(getUserRole(user.id));
+    setEditUserDialogOpen(true);
   };
 
-  if (!isAdmin) {
-    return null;
-  }
+  const openDeleteConfirmDialog = (user: User) => {
+    setCurrentUser(user);
+    setDeleteConfirmDialogOpen(true);
+  };
+
+  const resetInviteForm = () => {
+    setInviteEmail("");
+    setInviteFirstName("");
+    setInviteLastName("");
+    setInviteRole("user");
+  };
 
   return (
     <MainLayout>
-      <div className="container mx-auto py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Manage Users</h1>
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">User Management</h1>
+            <p className="text-gray-500">Manage user accounts and permissions</p>
+          </div>
+          <Button onClick={() => setInviteDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite User
+          </Button>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <p>Loading users data...</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <Table>
-              <TableCaption>List of all users in the system</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow 
-                    key={user.id} 
-                    className={user.status === "deleted" ? "bg-red-50" : ""}
-                  >
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <select 
-                        value={user.role}
-                        onChange={(e) => handleChangeRole(user.id, e.target.value)}
-                        className="border rounded p-1"
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={user.status === "active" ? "default" : "destructive"}
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleOpenPermissions(user)}
-                      >
-                        Manage Permissions
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant={user.status === "active" ? "destructive" : "default"}
-                        size="sm"
-                        onClick={() => handleToggleUserStatus(user.id, user.status)}
-                      >
-                        {user.status === "active" ? "Deactivate" : "Activate"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="mr-2" />
+              Users
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="h-40 flex items-center justify-center">
+                <p className="text-muted-foreground">Loading users...</p>
+              </div>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Last Sign In</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center">
+                          No users found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      users.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="font-medium">
+                              {user.user_metadata?.first_name || ''} {user.user_metadata?.last_name || ''}
+                            </div>
+                          </TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              getUserRole(user.id) === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              <Shield className="mr-1 h-3 w-3" />
+                              {getUserRole(user.id) === 'admin' ? 'Admin' : 'User'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {formatDistance(new Date(user.created_at), new Date(), { addSuffix: true })}
+                          </TableCell>
+                          <TableCell>
+                            {user.last_sign_in_at 
+                              ? formatDistance(new Date(user.last_sign_in_at), new Date(), { addSuffix: true })
+                              : 'Never'}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openEditUserDialog(user)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  Edit Role
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => openDeleteConfirmDialog(user)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Permissions Dialog */}
-        <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+        {/* Invite User Dialog */}
+        <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>User Permissions</DialogTitle>
+              <DialogTitle>Invite User</DialogTitle>
               <DialogDescription>
-                Set permissions for {selectedUser?.email}
+                Send an invitation email to add a new user.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="edit-product"
-                  checked={userPermissions.edit_product} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("edit_product", checked === true)
-                  } 
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="col-span-3"
                 />
-                <label htmlFor="edit-product">Edit Product</label>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-product"
-                  checked={userPermissions.delete_product} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("delete_product", checked === true)
-                  }  
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="firstName" className="text-right">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  value={inviteFirstName}
+                  onChange={(e) => setInviteFirstName(e.target.value)}
+                  className="col-span-3"
                 />
-                <label htmlFor="delete-product">Delete Product</label>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="add-product"
-                  checked={userPermissions.add_product} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("add_product", checked === true)
-                  }  
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastName" className="text-right">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  value={inviteLastName}
+                  onChange={(e) => setInviteLastName(e.target.value)}
+                  className="col-span-3"
                 />
-                <label htmlFor="add-product">Add Product</label>
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="edit-price-history"
-                  checked={userPermissions.edit_price_history} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("edit_price_history", checked === true)
-                  }  
-                />
-                <label htmlFor="edit-price-history">Edit Price History</label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="delete-price-history"
-                  checked={userPermissions.delete_price_history} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("delete_price_history", checked === true)
-                  }  
-                />
-                <label htmlFor="delete-price-history">Delete Price History</label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="add-price-history"
-                  checked={userPermissions.add_price_history} 
-                  onCheckedChange={(checked) => 
-                    handlePermissionChange("add_price_history", checked === true)
-                  }  
-                />
-                <label htmlFor="add-price-history">Add Price History</label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="role" className="text-right">
+                  Role
+                </Label>
+                <Select
+                  value={inviteRole}
+                  onValueChange={(value) => setInviteRole(value)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button 
-                type="submit" 
-                onClick={handleSavePermissions}
-              >
-                Save Permissions
+              <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleInviteUser} disabled={!inviteEmail}>Send Invitation</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit User Dialog */}
+        <Dialog open={editUserDialogOpen} onOpenChange={setEditUserDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User Role</DialogTitle>
+              <DialogDescription>
+                Change the role and permissions for this user.
+              </DialogDescription>
+            </DialogHeader>
+            {currentUser && (
+              <div className="grid gap-4 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="font-medium">{currentUser.email}</div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="role" className="text-right">
+                    Role
+                  </Label>
+                  <Select
+                    value={currentUserRole}
+                    onValueChange={(value) => setCurrentUserRole(value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditUserDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateUserRole}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User Confirmation Dialog */}
+        <Dialog open={deleteConfirmDialogOpen} onOpenChange={setDeleteConfirmDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently delete the user account.
+              </DialogDescription>
+            </DialogHeader>
+            {currentUser && (
+              <div className="py-4">
+                <p>
+                  Are you sure you want to delete the account for <strong>{currentUser.email}</strong>?
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteUser}>
+                Delete User
               </Button>
             </DialogFooter>
           </DialogContent>
