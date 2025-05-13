@@ -22,6 +22,7 @@ const ManageUsers = () => {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const { 
     users, 
+    userRoles,
     loading: usersLoading, 
     getUserRole, 
     inviteUser,
@@ -113,7 +114,7 @@ const ManageUsers = () => {
             ) : (
               <UserTable 
                 users={users}
-                userRoles={[]}
+                userRoles={userRoles}
                 getUserRole={getUserRole}
                 onEditUser={openEditUserDialog}
                 onDeleteUser={openDeleteConfirmDialog}
