@@ -305,13 +305,23 @@ const ManageUsers = () => {
   };
 
   const openEditUserDialog = (user: User) => {
-    setCurrentUser(user);
+    // Convert the regular User to AppUser by ensuring email is not undefined
+    const appUser: AppUser = {
+      ...user,
+      email: user.email || ''
+    };
+    setCurrentUser(appUser);
     setCurrentUserRole(getUserRole(user.id));
     setEditUserDialogOpen(true);
   };
 
   const openDeleteConfirmDialog = (user: User) => {
-    setCurrentUser(user);
+    // Convert the regular User to AppUser by ensuring email is not undefined
+    const appUser: AppUser = {
+      ...user,
+      email: user.email || ''
+    };
+    setCurrentUser(appUser);
     setDeleteConfirmDialogOpen(true);
   };
 
