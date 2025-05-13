@@ -21,11 +21,16 @@ export const useAuth = () => {
         // Check if user is admin
         try {
           const { data, error } = await supabase.rpc('is_admin');
-          if (!error && data) {
-            setIsAdmin(true);
+          
+          if (error) {
+            console.error("Error checking admin status:", error);
+            setIsAdmin(false);
+          } else {
+            setIsAdmin(data === true);
           }
         } catch (error) {
           console.error("Error checking admin status:", error);
+          setIsAdmin(false);
         }
       }
       
@@ -36,17 +41,19 @@ export const useAuth = () => {
 
     // Setup listener for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setUser(session?.user || null);
         
         if (session?.user) {
           // Check if user is admin
           try {
             const { data, error } = await supabase.rpc('is_admin');
-            if (!error && data) {
-              setIsAdmin(true);
-            } else {
+            
+            if (error) {
+              console.error("Error checking admin status:", error);
               setIsAdmin(false);
+            } else {
+              setIsAdmin(data === true);
             }
           } catch (error) {
             console.error("Error checking admin status:", error);

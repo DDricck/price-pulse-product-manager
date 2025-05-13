@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Shield, MoreHorizontal, UserPlus, Pencil, Trash2, Users } from "lucide-react";
 import { formatDistance } from "date-fns";
 
@@ -48,7 +49,7 @@ type User = {
 type UserRole = {
   id: string;
   user_id: string;
-  user_admin: string; // Changed from 'role' to 'user_admin'
+  user_admin: string;
   created_at: string;
   updated_at: string;
 };
@@ -67,6 +68,7 @@ const ManageUsers = () => {
   const [currentUserRole, setCurrentUserRole] = useState("user");
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
     const fetchUsersAndRoles = async () => {
@@ -80,21 +82,26 @@ const ManageUsers = () => {
             title: "Access Denied",
             description: "You don't have permission to access this page.",
           });
-          // Redirect to dashboard or show access denied
           return;
         }
         
         // Fetch users
         const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
         
-        if (usersError) throw usersError;
+        if (usersError) {
+          console.error("Error fetching users:", usersError);
+          throw usersError;
+        }
         
         // Fetch user roles
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('*');
           
-        if (rolesError) throw rolesError;
+        if (rolesError) {
+          console.error("Error fetching user roles:", rolesError);
+          throw rolesError;
+        }
         
         setUsers(usersData?.users || []);
         setUserRoles(rolesData || []);
@@ -115,7 +122,7 @@ const ManageUsers = () => {
 
   const getUserRole = (userId: string) => {
     const userRole = userRoles.find((role) => role.user_id === userId);
-    return userRole ? userRole.user_admin : 'user'; // Changed from role.role to role.user_admin
+    return userRole ? userRole.user_admin : 'user';
   };
 
   const handleInviteUser = async () => {
@@ -138,7 +145,7 @@ const ManageUsers = () => {
           .from('user_roles')
           .insert({
             user_id: data.user.id,
-            user_admin: 'admin' // Changed from role: 'admin' to user_admin: 'admin'
+            user_admin: 'admin'
           });
           
         if (roleError) throw roleError;
@@ -189,7 +196,7 @@ const ManageUsers = () => {
           // Update existing record to admin
           await supabase
             .from('user_roles')
-            .update({ user_admin: 'admin' }) // Changed from role: 'admin' to user_admin: 'admin'
+            .update({ user_admin: 'admin' })
             .eq('user_id', userId);
         } else {
           // Insert new admin record
@@ -197,7 +204,7 @@ const ManageUsers = () => {
             .from('user_roles')
             .insert({
               user_id: userId,
-              user_admin: 'admin' // Changed from role: 'admin' to user_admin: 'admin'
+              user_admin: 'admin'
             });
         }
       } else {
@@ -295,6 +302,22 @@ const ManageUsers = () => {
     setInviteLastName("");
     setInviteRole("user");
   };
+
+  // If not admin, show not authorized
+  if (!isAdmin && !loading) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto py-6 space-y-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+              <p className="text-gray-600 mt-2">You don't have permission to access this page.</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
