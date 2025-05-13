@@ -34,16 +34,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Shield, MoreHorizontal, UserPlus, Pencil, Trash2, Users } from "lucide-react";
 import { formatDistance } from "date-fns";
+import { User } from '@supabase/supabase-js';
 
-type User = {
-  id: string;
-  email: string;
+// Use type augmentation for our application-specific user data
+type AppUser = User & {
+  email: string; // Make email required for our app
   created_at: string;
   last_sign_in_at: string | null;
-  user_metadata: {
-    first_name?: string;
-    last_name?: string;
-  };
 };
 
 type UserRole = {
@@ -55,7 +52,7 @@ type UserRole = {
 };
 
 const ManageUsers = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -64,7 +61,7 @@ const ManageUsers = () => {
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRole, setInviteRole] = useState("user");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState("user");
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -103,7 +100,13 @@ const ManageUsers = () => {
           throw rolesError;
         }
         
-        setUsers(usersData?.users || []);
+        // Ensure all users have email property and cast them to AppUser
+        const usersWithEmail = (usersData?.users || []).map(user => ({
+          ...user,
+          email: user.email || '',  // Ensure email is never undefined
+        })) as AppUser[];
+        
+        setUsers(usersWithEmail);
         setUserRoles(rolesData || []);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -160,7 +163,15 @@ const ManageUsers = () => {
       
       // Refresh users list
       const { data: updatedUsers } = await supabase.auth.admin.listUsers();
-      if (updatedUsers) setUsers(updatedUsers.users);
+      if (updatedUsers) {
+        // Ensure all users have email property
+        const usersWithEmail = updatedUsers.users.map(user => ({
+          ...user,
+          email: user.email || '',
+        })) as AppUser[];
+        
+        setUsers(usersWithEmail);
+      }
       
       // Refresh roles
       const { data: updatedRoles } = await supabase
@@ -264,7 +275,15 @@ const ManageUsers = () => {
       
       // Refresh users list
       const { data: updatedUsers } = await supabase.auth.admin.listUsers();
-      if (updatedUsers) setUsers(updatedUsers.users);
+      if (updatedUsers) {
+        // Ensure all users have email property
+        const usersWithEmail = updatedUsers.users.map(user => ({
+          ...user,
+          email: user.email || '',
+        })) as AppUser[];
+        
+        setUsers(usersWithEmail);
+      }
       
       // User roles should be automatically cascaded due to foreign key constraint
       const { data: updatedRoles } = await supabase
